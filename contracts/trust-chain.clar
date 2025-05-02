@@ -144,3 +144,65 @@
     )
   )
 )
+
+;; Apply Time-Based Reputation Decay
+(define-public (decay-reputation)
+  (let 
+    (
+      (owner tx-sender)
+      (current-identity 
+        (unwrap! 
+          (map-get? identities {owner: owner}) 
+          (err ERR-IDENTITY-NOT-FOUND)
+        )
+      )
+      (current-score (get reputation-score current-identity))
+      (decay-amount 
+        (/ (* current-score REPUTATION-DECAY-RATE) u100)
+      )
+      (updated-score 
+        (if (> (- current-score decay-amount) MIN-REPUTATION-SCORE)
+            (- current-score decay-amount)
+            MIN-REPUTATION-SCORE
+        )
+      )
+    )
+    (begin
+      (map-set identities 
+        {owner: owner}
+        (merge current-identity {
+          reputation-score: updated-score,
+          last-updated: stacks-block-height
+        })
+      )
+      (ok updated-score)
+    )
+  )
+)
+
+;; Read-Only Functions
+
+;; Get Identity Reputation
+(define-read-only (get-reputation (owner principal))
+  (map-get? identities {owner: owner})
+)
+
+;; Verify Reputation Threshold
+(define-read-only (verify-reputation 
+  (owner principal) 
+  (min-reputation-threshold uint)
+)
+  (match 
+    (map-get? identities {owner: owner})
+    identity 
+      (if (>= (get reputation-score identity) min-reputation-threshold)
+          (some true)
+          none
+      )
+    none
+  )
+)
+
+;; Contract Initialization
+
+(initialize-reputation-actions)
