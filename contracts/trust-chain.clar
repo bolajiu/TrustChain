@@ -51,3 +51,52 @@
     (is-eq owner tx-sender)
   )
 )
+
+;; Public Functions
+
+;; Initialize Reputation Actions
+(define-public (initialize-reputation-actions)
+  (begin
+    (map-set reputation-actions 
+      {action-type: "governance-vote"} 
+      {multiplier: u5}
+    )
+    (map-set reputation-actions 
+      {action-type: "contract-fulfillment"} 
+      {multiplier: u10}
+    )
+    (map-set reputation-actions 
+      {action-type: "community-contribution"} 
+      {multiplier: u7}
+    )
+    (ok true)
+  )
+)
+
+;; Create New Identity
+(define-public (create-identity (did (string-ascii 50)))
+  (let 
+    (
+      (sender tx-sender)
+      (current-stacks-block-height stacks-block-height)
+    )
+    (begin
+      (asserts! (is-none (map-get? identities {owner: sender})) 
+        (err ERR-IDENTITY-EXISTS))
+      
+      (asserts! (> (len did) u5) 
+        (err ERR-INVALID-PARAMETERS))
+      
+      (map-set identities 
+        {owner: sender}
+        {
+          did: did,
+          reputation-score: u50,  ;; Starting reputation
+          created-at: current-stacks-block-height,
+          last-updated: current-stacks-block-height
+        }
+      )
+      (ok did)
+    )
+  )
+)
